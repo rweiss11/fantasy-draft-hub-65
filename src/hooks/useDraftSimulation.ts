@@ -180,8 +180,11 @@ export function useDraftSimulation(config: DraftConfig) {
   const generateCommentary = useCallback(
     async (player: Player, round: number, pick: number, teamIndex: number) => {
       if (!config.claudeApiKey || config.claudeApiKey.trim() === "") {
+        console.log("No Claude API key provided - skipping commentary");
         return player;
       }
+
+      console.log(`Generating commentary for ${player.name}...`);
 
       try {
         const currentState = stateRef.current;
@@ -216,7 +219,9 @@ Why is this a smart pick right now?`,
           },
         ];
 
+        console.log("Calling Claude API...");
         const response = await callClaude(messages, config.claudeApiKey);
+        console.log("Claude response:", response.content);
         return { ...player, commentary: response.content };
       } catch (error) {
         console.error("Commentary generation error:", error);
@@ -252,13 +257,14 @@ Why is this a smart pick right now?`,
         currentState.allTeams[teamIndex]
       );
 
-      // Generate commentary asynchronously without blocking
+      // Generate commentary and then show dialog
       generateCommentary(
         recommended,
         currentState.currentRound,
         currentState.currentPick,
         teamIndex
       ).then((playerWithCommentary) => {
+        // Only update state after commentary is ready (or failed)
         setState((prev) => ({
           ...prev,
           isUserTurn: true,
