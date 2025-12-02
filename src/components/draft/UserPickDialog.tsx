@@ -104,9 +104,12 @@ export default function UserPickDialog({
             </div>
 
             {recommendedPlayer.commentary && (
-              <div className="p-3 rounded-lg bg-accent/10 border border-accent/30 mb-4">
-                <p className="text-xs text-muted-foreground mb-1">AI Commentary:</p>
-                <p className="text-sm leading-relaxed">{recommendedPlayer.commentary}</p>
+              <div className="p-3 rounded-lg bg-muted/50 border border-border mb-4">
+                <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                  AI Analysis
+                </p>
+                <p className="text-sm leading-relaxed text-foreground/90">{recommendedPlayer.commentary}</p>
               </div>
             )}
           </>
