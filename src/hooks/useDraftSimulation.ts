@@ -177,10 +177,66 @@ export function useDraftSimulation(config: DraftConfig) {
     [config.numTeams, config.rounds, getTeamIndexForPick, isUserPickPosition]
   );
 
-  const processNextPick = useCallback(async () => {
+  const generateCommentary = useCallback(
+    async (player: Player, round: number, pick: number, teamIndex: number) => {
+      if (!config.claudeApiKey || config.claudeApiKey.trim() === "") {
+        return player;
+      }
+
+      try {
+        const currentState = stateRef.current;
+        const news = await fetchPlayerNews(player.name);
+        const newsPrompt = formatNewsForPrompt(news);
+        const timestamp = new Date().toLocaleString();
+
+        const messages = [
+          {
+            role: "system" as const,
+            content: `Current timestamp: ${timestamp}.
+Commentary must reflect current player context, trends, or news as of this timestamp.
+${newsPrompt}
+
+Your task: Explain WHY this pick makes sense using current context, recent news, player conditions, depth chart changes, team momentum, and injury reports.
+Tone: helpful analysis — no broadcast hype.
+Keep it concise (2-3 sentences).`,
+          },
+          {
+            role: "user" as const,
+            content: `Round ${round}, Pick ${pick}.
+Team roster so far:
+QB: ${currentState.allTeams[teamIndex].filter((p) => p.position === "QB").length}
+RB: ${currentState.allTeams[teamIndex].filter((p) => p.position === "RB").length}
+WR: ${currentState.allTeams[teamIndex].filter((p) => p.position === "WR").length}
+TE: ${currentState.allTeams[teamIndex].filter((p) => p.position === "TE").length}
+
+Recommended pick: ${player.name} (${player.team} - ${player.position})
+Projected points: ${config.ppr ? player.projectedPointsPPR : player.projectedPoints}
+
+Why is this a smart pick right now?`,
+          },
+        ];
+
+        const response = await callClaude(messages, config.claudeApiKey);
+        return { ...player, commentary: response.content };
+      } catch (error) {
+        console.error("Commentary generation error:", error);
+        return player;
+      }
+    },
+    [config.claudeApiKey, config.ppr]
+  );
+
+  const processNextPick = useCallback(() => {
     const currentState = stateRef.current;
 
     if (currentState.isComplete || !currentState.isRunning) return;
+
+    // Safety check for player pool
+    if (currentState.availablePlayers.length === 0) {
+      console.error("Draft stopped: no more players available");
+      setState((prev) => ({ ...prev, isRunning: false, isComplete: true }));
+      return;
+    }
 
     const teamIndex = getTeamIndexForPick(
       currentState.currentRound,
@@ -196,58 +252,20 @@ export function useDraftSimulation(config: DraftConfig) {
         currentState.allTeams[teamIndex]
       );
 
-      // Generate AI commentary if API key provided
-      if (config.claudeApiKey && config.claudeApiKey.trim() !== "") {
-        try {
-          const news = await fetchPlayerNews(recommended.name);
-          const newsPrompt = formatNewsForPrompt(news);
-          const timestamp = new Date().toISOString();
+      // Generate commentary asynchronously without blocking
+      generateCommentary(
+        recommended,
+        currentState.currentRound,
+        currentState.currentPick,
+        teamIndex
+      ).then((playerWithCommentary) => {
+        setState((prev) => ({
+          ...prev,
+          isUserTurn: true,
+          recommendedPlayer: playerWithCommentary,
+        }));
+      });
 
-          const messages = [
-            {
-              role: "system" as const,
-              content: `Current timestamp: ${timestamp}.
-Commentary must reflect current player context, trends, or news as of this timestamp.
-Same-hour relevance preferred, minimum same-day.
-${newsPrompt}
-
-Your task: Explain WHY this pick makes sense using current timestamp, recent news, player conditions, depth chart changes, team momentum, and injury reports.
-Tone: helpful analysis — no broadcast hype.
-Keep it concise (2-3 sentences).`,
-            },
-            {
-              role: "user" as const,
-              content: `Round ${currentState.currentRound}, Pick ${currentState.currentPick}.
-Team needs analysis:
-${Object.entries({
-                QB: currentState.allTeams[teamIndex].filter((p) => p.position === "QB").length,
-                RB: currentState.allTeams[teamIndex].filter((p) => p.position === "RB").length,
-                WR: currentState.allTeams[teamIndex].filter((p) => p.position === "WR").length,
-                TE: currentState.allTeams[teamIndex].filter((p) => p.position === "TE").length,
-              })
-                .map(([pos, count]) => `${pos}: ${count}`)
-                .join(", ")}
-
-Recommended pick: ${recommended.name} (${recommended.team} - ${recommended.position})
-Projected points: ${config.ppr ? recommended.projectedPointsPPR : recommended.projectedPoints}
-
-Why is this a smart pick right now?`,
-            },
-          ];
-
-          const response = await callClaude(messages, config.claudeApiKey);
-          recommended.commentary = response.content;
-        } catch (error) {
-          console.error("Commentary generation error:", error);
-          recommended.commentary = undefined;
-        }
-      }
-
-      setState((prev) => ({
-        ...prev,
-        isUserTurn: true,
-        recommendedPlayer: recommended,
-      }));
       return;
     }
 
@@ -264,7 +282,7 @@ Why is this a smart pick right now?`,
     timeoutRef.current = setTimeout(() => {
       processNextPick();
     }, 1000);
-  }, [config.ppr, config.userSlot, config.claudeApiKey, getTeamIndexForPick, makePick]);
+  }, [config.ppr, config.userSlot, getTeamIndexForPick, makePick, generateCommentary]);
 
   const startDraft = useCallback(() => {
     initDraft();

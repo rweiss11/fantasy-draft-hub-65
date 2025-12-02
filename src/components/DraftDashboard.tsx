@@ -35,7 +35,7 @@ export default function DraftDashboard() {
     snake: isSnake,
     ppr: isPPR,
     userSlot,
-    rounds: 15,
+    rounds: 7, // Reduced to prevent running out of players (7 rounds × 10 teams = 70 picks max)
     claudeApiKey,
   });
 
