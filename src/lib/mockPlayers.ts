@@ -6,6 +6,7 @@ export interface Player {
   adp: number; // Average Draft Position
   projectedPoints: number;
   projectedPointsPPR: number;
+  commentary?: string; // AI-generated commentary for recommended picks
 }
 
 export const mockPlayers: Player[] = [
