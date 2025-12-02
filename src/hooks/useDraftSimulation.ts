@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { Player } from "../lib/mockPlayers";
+import { callClaude } from "../lib/claudeClient";
+import { fetchPlayerNews, formatNewsForPrompt } from "../lib/newsClient";
 
 interface DraftConfig {
   players: Player[];
@@ -8,6 +10,7 @@ interface DraftConfig {
   ppr: boolean;
   userSlot: number;
   rounds: number;
+  claudeApiKey?: string;
 }
 
 interface DraftState {
@@ -29,6 +32,11 @@ function pickBestAvailable(
   ppr: boolean,
   teamRoster: Player[]
 ): Player {
+  // Ensure we never run out of players
+  if (available.length === 0) {
+    throw new Error("No players available - draft pool exhausted");
+  }
+
   // Get position counts on team
   const posCounts = {
     QB: teamRoster.filter((p) => p.position === "QB").length,
@@ -50,6 +58,7 @@ function pickBestAvailable(
     return true;
   });
 
+  // CRITICAL: Never return empty pool - fallback to best available
   const pool = filtered.length > 0 ? filtered : available;
 
   // Sort by projected points
@@ -168,7 +177,7 @@ export function useDraftSimulation(config: DraftConfig) {
     [config.numTeams, config.rounds, getTeamIndexForPick, isUserPickPosition]
   );
 
-  const processNextPick = useCallback(() => {
+  const processNextPick = useCallback(async () => {
     const currentState = stateRef.current;
 
     if (currentState.isComplete || !currentState.isRunning) return;
@@ -186,6 +195,54 @@ export function useDraftSimulation(config: DraftConfig) {
         config.ppr,
         currentState.allTeams[teamIndex]
       );
+
+      // Generate AI commentary if API key provided
+      if (config.claudeApiKey && config.claudeApiKey.trim() !== "") {
+        try {
+          const news = await fetchPlayerNews(recommended.name);
+          const newsPrompt = formatNewsForPrompt(news);
+          const timestamp = new Date().toISOString();
+
+          const messages = [
+            {
+              role: "system" as const,
+              content: `Current timestamp: ${timestamp}.
+Commentary must reflect current player context, trends, or news as of this timestamp.
+Same-hour relevance preferred, minimum same-day.
+${newsPrompt}
+
+Your task: Explain WHY this pick makes sense using current timestamp, recent news, player conditions, depth chart changes, team momentum, and injury reports.
+Tone: helpful analysis — no broadcast hype.
+Keep it concise (2-3 sentences).`,
+            },
+            {
+              role: "user" as const,
+              content: `Round ${currentState.currentRound}, Pick ${currentState.currentPick}.
+Team needs analysis:
+${Object.entries({
+                QB: currentState.allTeams[teamIndex].filter((p) => p.position === "QB").length,
+                RB: currentState.allTeams[teamIndex].filter((p) => p.position === "RB").length,
+                WR: currentState.allTeams[teamIndex].filter((p) => p.position === "WR").length,
+                TE: currentState.allTeams[teamIndex].filter((p) => p.position === "TE").length,
+              })
+                .map(([pos, count]) => `${pos}: ${count}`)
+                .join(", ")}
+
+Recommended pick: ${recommended.name} (${recommended.team} - ${recommended.position})
+Projected points: ${config.ppr ? recommended.projectedPointsPPR : recommended.projectedPoints}
+
+Why is this a smart pick right now?`,
+            },
+          ];
+
+          const response = await callClaude(messages, config.claudeApiKey);
+          recommended.commentary = response.content;
+        } catch (error) {
+          console.error("Commentary generation error:", error);
+          recommended.commentary = undefined;
+        }
+      }
+
       setState((prev) => ({
         ...prev,
         isUserTurn: true,
@@ -207,7 +264,7 @@ export function useDraftSimulation(config: DraftConfig) {
     timeoutRef.current = setTimeout(() => {
       processNextPick();
     }, 1000);
-  }, [config.ppr, config.userSlot, getTeamIndexForPick, makePick]);
+  }, [config.ppr, config.userSlot, config.claudeApiKey, getTeamIndexForPick, makePick]);
 
   const startDraft = useCallback(() => {
     initDraft();

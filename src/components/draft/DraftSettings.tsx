@@ -16,6 +16,8 @@ interface DraftSettingsProps {
   setIsSnake: (value: boolean) => void;
   isPPR: boolean;
   setIsPPR: (value: boolean) => void;
+  claudeApiKey: string;
+  setClaudeApiKey: (value: string) => void;
   onStartDraft: () => void;
   isRunning: boolean;
 }
@@ -29,6 +31,8 @@ export default function DraftSettings({
   setIsSnake,
   isPPR,
   setIsPPR,
+  claudeApiKey,
+  setClaudeApiKey,
   onStartDraft,
   isRunning,
 }: DraftSettingsProps) {
@@ -104,6 +108,29 @@ export default function DraftSettings({
               </Label>
             </div>
             <Switch id="ppr" checked={isPPR} onCheckedChange={setIsPPR} />
+          </div>
+
+          <Separator />
+
+          {/* Claude API Key */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="claudeApiKey"
+              className="text-sm"
+            >
+              Claude API Key (Optional - for AI Commentary)
+            </Label>
+            <Input
+              id="claudeApiKey"
+              type="password"
+              value={claudeApiKey}
+              onChange={(e) => setClaudeApiKey(e.target.value)}
+              placeholder="sk-ant-..."
+              className="bg-secondary border-border font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Get your key from console.anthropic.com
+            </p>
           </div>
 
           <Separator />
