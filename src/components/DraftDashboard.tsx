@@ -14,7 +14,6 @@ export default function DraftDashboard() {
   const [isSnake, setIsSnake] = useState(true);
   const [isPPR, setIsPPR] = useState(true);
   const [userSlot, setUserSlot] = useState(7);
-  const [claudeApiKey, setClaudeApiKey] = useState("");
 
   const {
     isRunning,
@@ -35,8 +34,7 @@ export default function DraftDashboard() {
     snake: isSnake,
     ppr: isPPR,
     userSlot,
-    rounds: 7, // Reduced to prevent running out of players (7 rounds × 10 teams = 70 picks max)
-    claudeApiKey,
+    rounds: 7,
   });
 
   const showSettings = !isRunning && !isComplete;
@@ -81,8 +79,6 @@ export default function DraftDashboard() {
             setIsSnake={setIsSnake}
             isPPR={isPPR}
             setIsPPR={setIsPPR}
-            claudeApiKey={claudeApiKey}
-            setClaudeApiKey={setClaudeApiKey}
             onStartDraft={startDraft}
             isRunning={isRunning}
           />
