@@ -73,46 +73,34 @@ export default function UserPickDialog({
         </DialogHeader>
 
         {recommendedPlayer && (
-          <>
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 mb-4">
-              <p className="text-sm text-muted-foreground mb-2">
-                Recommended Pick:
-              </p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant="outline"
-                    className={`${getPositionClass(recommendedPlayer.position)} border-0 font-semibold`}
-                  >
-                    {recommendedPlayer.position}
-                  </Badge>
-                  <div>
-                    <p className="font-semibold">{recommendedPlayer.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {recommendedPlayer.team} · {getScore(recommendedPlayer)} pts
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => onSelect(recommendedPlayer)}
-                  className="gradient-primary"
+          <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 mb-4">
+            <p className="text-sm text-muted-foreground mb-2">
+              Recommended Pick:
+            </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge
+                  variant="outline"
+                  className={`${getPositionClass(recommendedPlayer.position)} border-0 font-semibold`}
                 >
-                  <Check className="h-4 w-4 mr-2" />
-                  Draft
-                </Button>
+                  {recommendedPlayer.position}
+                </Badge>
+                <div>
+                  <p className="font-semibold">{recommendedPlayer.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {recommendedPlayer.team} · {getScore(recommendedPlayer)} pts
+                  </p>
+                </div>
               </div>
+              <Button
+                onClick={() => onSelect(recommendedPlayer)}
+                className="gradient-primary"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Draft
+              </Button>
             </div>
-
-            {recommendedPlayer.commentary && (
-              <div className="p-3 rounded-lg bg-muted/50 border border-border mb-4">
-                <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                  AI Analysis
-                </p>
-                <p className="text-sm leading-relaxed text-foreground/90">{recommendedPlayer.commentary}</p>
-              </div>
-            )}
-          </>
+          </div>
         )}
 
         <div className="space-y-3">
